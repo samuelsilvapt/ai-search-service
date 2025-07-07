@@ -1,62 +1,68 @@
 # Embedding Service (MySQL)
 
-Micro-serviço Node.js para gerar embeddings de texto em OpenAI, gravá-los em MySQL e expor uma REST API protegida por token com documentação Swagger.
+Node.js + Express micro‑service that generates and stores OpenAI `text‑embedding-3-small` vectors, with token authentication, per‑origin quotas, and Swagger documentation.
 
-## Pré-requisitos
-
-* Node 20+
-* MySQL 8+
-* Conta OpenAI (para a API Key)
-
-## Instalação
+## Quick Start
 
 ```bash
 git clone <repo>
-cd embedding-service-mysql
+cd embedding-service
+cp .env.example .env   # edit values
 npm install
+npm run dev
 ```
 
-### Base de dados
-
-1. No MySQL CLI ou Workbench:
-
-```sql
-CREATE DATABASE embeddings;
-USE embeddings;
-
-CREATE TABLE embeddings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  text TEXT NOT NULL,
-  embedding JSON NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### Variáveis de ambiente
-
-Copie `.env.example` para `.env` e preencha:
-
-```
-DATABASE_URL=mysql://user:password@localhost:3306/embeddings
-OPENAI_API_KEY=sk-...
-AUTH_TOKEN=token-secreto
-```
-
-## Execução
+Create the database:
 
 ```bash
-npm run dev   # nodemon
-# ou
-npm start     # produção
+mysql -u root -p
+> CREATE DATABASE embeddings;
+> \q
+mysql -u apiuser -p embeddings < sql/schema.sql
 ```
 
-Visite `http://localhost:3000/docs` para a interface Swagger.
+Open Swagger UI at <http://localhost:3000/docs>.
+
+## Environment Variables
+
+| Name | Description |
+|------|-------------|
+| `PORT` | HTTP port (default 3000) |
+| `DATABASE_URL` | MySQL connection URI |
+| `OPENAI_API_KEY` | Your OpenAI API key |
+| `AUTH_TOKEN` | Global bearer token required in every request |
 
 ## Endpoints
 
-| Método | Rota | Descrição |
-| ------ | ---- | --------- |
-| POST   | /embeddings | Gera e grava embeddings |
-| GET    | /embeddings/:id | Recupera embedding por ID |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| **POST** | `/clients/register-origin` | Bearer token | Registers the calling `Origin` (from HTTP header). Returns `id`, `origin`, `api_token`, and default quotas. |
+| **POST** | `/embeddings` | Bearer token + registered Origin | Accepts `{ "texts": [ "text A", "text B" ] }`. Generates embeddings (cached), updates quotas. |
+| **GET** | `/embeddings/{id}` | Bearer token + registered Origin | Returns the stored embedding with the given ID. |
+| **GET** | `/docs` | — | Swagger UI auto‑generated docs. |
 
-Enjoy!
+## Usage Example
+
+```bash
+# 1. Register origin (runs once)
+curl -X POST http://localhost:3000/clients/register-origin \
+     -H "Authorization: Bearer $AUTH_TOKEN" \
+     -H "Origin: https://your-site.com"
+
+# 2. Create embeddings
+curl -X POST http://localhost:3000/embeddings \
+     -H "Authorization: Bearer $AUTH_TOKEN" \
+     -H "Origin: https://your-site.com" \
+     -H "Content-Type: application/json" \
+     -d '{ "texts": ["Hello world"] }'
+
+# 3. Retrieve embedding
+curl -H "Authorization: Bearer $AUTH_TOKEN" \
+     -H "Origin: https://your-site.com" \
+     http://localhost:3000/embeddings/1
+```
+
+## Cost Estimate
+
+`text‑embedding-3-small` costs ~\$0.000002 per 100 tokens.  
+1,000 texts × 100 tokens ≈ **$0.002**.
