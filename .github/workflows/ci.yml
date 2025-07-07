@@ -2,11 +2,11 @@ name: CI / CD
 
 on:
   push:
-    branches: [ main ]
-    tags:     [ 'v*' ]        # build & publish when you push a v-tag
-  pull_request:
+    branches: [ main, production ]
+    tags:     [ 'v*' ]          # optional version tags
 
 jobs:
+  # ─────────────── CI ───────────────
   install:
     runs-on: ubuntu-latest
     strategy:
@@ -24,10 +24,23 @@ jobs:
 
       - run: npm ci
 
-  # ────────────── CD (Docker) ──────────────
-  docker:
-    if: startsWith(github.ref, 'refs/tags/v')
+  # ─── Push HEAD of main ➜ production branch ───
+  promote:
+    if: github.ref == 'refs/heads/main'
     needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push to production branch
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git push --force origin HEAD:production
+
+  # ─────────────── Build & Push Docker ───────────────
+  docker:
+    needs: install
+    if: github.ref == 'refs/heads/production' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -43,11 +56,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from tag
+      - name: Set image version
         id: vars
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=production-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Build and push container
+      - name: Build & push
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -56,5 +74,5 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}
             ghcr.io/${{ github.repository }}:latest
 
-      - name: Image URL
-        run: echo "Pushed ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
+      - name: Show image URL
+        run: echo "Docker image: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
