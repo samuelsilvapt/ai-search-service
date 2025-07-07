@@ -75,4 +75,4 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
 
       - name: Show image URL
-        run: echo "Docker image: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
+        run: echo "Docker image ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
