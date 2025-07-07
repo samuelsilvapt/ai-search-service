@@ -62,4 +62,4 @@ jobs:
             NODE_ENV=production
 
       - name: Print image URL
-        run: echo "Image pushed: ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
+        run: echo "Image pushed ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
