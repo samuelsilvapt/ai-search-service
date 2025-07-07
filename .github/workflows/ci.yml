@@ -1,14 +1,13 @@
-name: CI / CD
+name: CI / CD
 
 on:
   push:
     branches: [ main ]
-    tags:     [ 'v*' ]      # e.g. v1.2.0
+    tags:     [ 'v*' ]        # build & publish when you push a v-tag
   pull_request:
 
 jobs:
-  # ──────────────────────────────
-  test:
+  install:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,14 +24,14 @@ jobs:
 
       - run: npm ci
 
-  # ──────────────────────────────
+  # ────────────── CD (Docker) ──────────────
   docker:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: test
+    needs: install
     runs-on: ubuntu-latest
     permissions:
+      packages: write
       contents: read
-      packages: write        
 
     steps:
       - uses: actions/checkout@v4
@@ -44,11 +43,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version
+      - name: Extract version from tag
         id: vars
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Build and push
+      - name: Build and push container
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -56,8 +55,6 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}
             ghcr.io/${{ github.repository }}:latest
-          build-args: |
-            NODE_ENV=production
 
-      - name: Print image URL
-        run: echo "Image pushed ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
+      - name: Image URL
+        run: echo "Pushed ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.VERSION }}"
