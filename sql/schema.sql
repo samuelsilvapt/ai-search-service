@@ -1,4 +1,4 @@
--- Schema for MySQL
+-- Schema for MySQL (embeddings + clients + quotas)
 
 CREATE TABLE IF NOT EXISTS clients (
   id INT AUTO_INCREMENT PRIMARY KEY,

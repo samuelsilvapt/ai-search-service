@@ -4,7 +4,10 @@
   "description": "REST API for generating and persisting OpenAI text-embeddings with token authentication and Swagger docs (MySQL edition)",
   "main": "src/index.js",
   "type": "module",
-  "scripts": { "start": "node src/index.js", "dev": "nodemon src/index.js" },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
   "dependencies": {
     "express": "^4.19.2",
     "mysql2": "^3.9.5",
@@ -13,5 +16,7 @@
     "swagger-ui-express": "^5.0.1",
     "swagger-jsdoc": "^6.2.8"
   },
-  "devDependencies": { "nodemon": "^3.0.3" }
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
 }
