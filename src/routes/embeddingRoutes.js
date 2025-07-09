@@ -19,7 +19,7 @@ router.post('/', authenticateToken, async (req, res) => {
         [text]
       );
       if (existing) {
-        results.push({ id: existing.id, text, reused: true, embedding: JSON.stringify(existing.embedding) });
+        results.push({ id: existing.id, text, reused: true, embedding: existing.embedding });
         continue;
       }
 
