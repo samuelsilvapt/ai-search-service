@@ -15,7 +15,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const results = [];
     for (const text of texts) {
       const [[existing]] = await conn.query(
-        'SELECT id FROM embeddings WHERE text = ?',
+        'SELECT id, embedding FROM embeddings WHERE text = ?',
         [text]
       );
       if (existing) {
