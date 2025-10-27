@@ -5,6 +5,69 @@ import { authenticateToken } from '../authMiddleware.js';
 
 const router = express.Router();
 
+/**
+ * @openapi
+ * /embeddings:
+ *   post:
+ *     summary: Create embeddings for text array
+ *     description: Creates embeddings for an array of texts. Requires authentication and origin validation.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: Origin
+ *         schema:
+ *           type: string
+ *           example: "https://example.com"
+ *         description: Must match the registered origin for the API token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - texts
+ *             properties:
+ *               texts:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Hello world", "How are you?"]
+ *     responses:
+ *       200:
+ *         description: Embeddings created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 embeddings:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       text:
+ *                         type: string
+ *                       reused:
+ *                         type: boolean
+ *                       embedding:
+ *                         type: string
+ *       400:
+ *         description: Invalid input - texts must be a non-empty array
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *       403:
+ *         description: Forbidden - invalid token, client not found, or origin mismatch
+ *       429:
+ *         description: Too Many Requests - daily quota exceeded
+ *       402:
+ *         description: Payment Required - total quota exceeded
+ *       500:
+ *         description: Internal server error
+ */
 router.post('/', authenticateToken, async (req, res) => {
   const { texts } = req.body;
   if (!Array.isArray(texts) || !texts.length) {
@@ -43,6 +106,44 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /embeddings/{id}:
+ *   get:
+ *     summary: Get embedding by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The embedding ID
+ *     responses:
+ *       200:
+ *         description: Embedding found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 text:
+ *                   type: string
+ *                 embedding:
+ *                   type: string
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *       404:
+ *         description: Embedding not found
+ *       500:
+ *         description: Internal server error
+ */
 router.get('/:id', authenticateToken, async (req, res) => {
   const id = Number.parseInt(req.params.id, 10);
   const [[row]] = await pool.query(

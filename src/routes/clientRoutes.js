@@ -8,17 +8,42 @@ const router = express.Router();
  * /clients/register-origin:
  *   post:
  *     summary: Automatically register the requesting Origin
+ *     description: Registers a new client origin and generates an API token for authentication
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: header
  *         name: Origin
  *         required: true
- *         schema: { type: string, example: "https://example.com" }
+ *         schema: 
+ *           type: string
+ *           example: "https://example.com"
+ *         description: The origin URL to register
  *     responses:
- *       201: { description: Origin registered }
- *       400: { description: Missing Origin header }
- *       409: { description: Origin already exists }
+ *       201: 
+ *         description: Origin registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Client'
+ *       400: 
+ *         description: Missing Origin header
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       409: 
+ *         description: Origin already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 router.post('/register-origin', async (req, res) => {
     const originHeader = req.headers['origin'];
