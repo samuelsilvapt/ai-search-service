@@ -230,6 +230,7 @@ router.post('/validate', async (req, res) => {
         total_limit: client.total_limit,
         used_daily: client.used_daily,
         used_total: client.used_total,
+        last_reset: client.last_reset,
         quotas_exceeded: {
           daily: client.used_daily >= client.daily_limit,
           total: client.used_total >= client.total_limit
