@@ -9,8 +9,8 @@ const router = express.Router();
  * @openapi
  * /embeddings:
  *   post:
- *     summary: Create embeddings for text array
- *     description: Creates embeddings for an array of texts. Requires authentication and origin validation.
+ *     summary: Generate embeddings for text array
+ *     description: Generates fresh embeddings for an array of texts without caching. Requires authentication and origin validation.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -34,9 +34,10 @@ const router = express.Router();
  *                 items:
  *                   type: string
  *                 example: ["Hello world", "How are you?"]
+ *                 description: Array of texts to generate embeddings for (no length limit)
  *     responses:
  *       200:
- *         description: Embeddings created successfully
+ *         description: Embeddings generated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -47,14 +48,26 @@ const router = express.Router();
  *                   items:
  *                     type: object
  *                     properties:
- *                       id:
+ *                       index:
  *                         type: integer
+ *                         description: Position in the input array
  *                       text:
  *                         type: string
- *                       reused:
- *                         type: boolean
+ *                         description: Original input text
  *                       embedding:
  *                         type: string
+ *                         description: JSON string of the embedding vector
+ *                       timestamp:
+ *                         type: string
+ *                         format: date-time
+ *                         description: When this embedding was generated
+ *                 count:
+ *                   type: integer
+ *                   description: Total number of embeddings generated
+ *                 generated_at:
+ *                   type: string
+ *                   format: date-time
+ *                   description: When the batch was processed
  *       400:
  *         description: Invalid input - texts must be a non-empty array
  *       401:
@@ -74,85 +87,38 @@ router.post('/', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'texts must be a non-empty array' });
   }
   try {
-    const conn = await pool.getConnection();
     const results = [];
-    for (const text of texts) {
-      const [[existing]] = await conn.query(
-        'SELECT id, embedding FROM embeddings WHERE text = ?',
-        [text]
-      );
-      if (existing) {
-        results.push({ id: existing.id, text, reused: true, embedding: existing.embedding });
-        continue;
-      }
-
+    
+    // Generate embeddings for each text without caching
+    for (let i = 0; i < texts.length; i++) {
+      const text = texts[i];
       const vector = await embedText(text);
-      const [insert] = await conn.query(
-        'INSERT INTO embeddings(text, embedding) VALUES (?, ?)',
-        [text, JSON.stringify(vector)]
-      );
-      results.push({ id: insert.insertId, text, reused: false, embedding: JSON.stringify(vector) });
-
-      await conn.query(
-        'UPDATE clients SET used_daily = used_daily + 1, used_total = used_total + 1 WHERE id = ?',
-        [req.client.id]
-      );
+      
+      results.push({ 
+        index: i,
+        text, 
+        embedding: JSON.stringify(vector),
+        timestamp: new Date().toISOString()
+      });
     }
-    conn.release();
-    res.json({ embeddings: results });
+
+    // Update client usage counters (one query for all texts)
+    await pool.query(
+      'UPDATE clients SET used_daily = used_daily + ?, used_total = used_total + ? WHERE id = ?',
+      [texts.length, texts.length, req.client.id]
+    );
+
+    res.json({ 
+      embeddings: results,
+      count: results.length,
+      generated_at: new Date().toISOString()
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-/**
- * @openapi
- * /embeddings/{id}:
- *   get:
- *     summary: Get embedding by ID
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: The embedding ID
- *     responses:
- *       200:
- *         description: Embedding found
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                 text:
- *                   type: string
- *                 embedding:
- *                   type: string
- *                 created_at:
- *                   type: string
- *                   format: date-time
- *       401:
- *         description: Unauthorized - invalid or missing token
- *       404:
- *         description: Embedding not found
- *       500:
- *         description: Internal server error
- */
-router.get('/:id', authenticateToken, async (req, res) => {
-  const id = Number.parseInt(req.params.id, 10);
-  const [[row]] = await pool.query(
-    'SELECT id, text, embedding, created_at FROM embeddings WHERE id = ?',
-    [id]
-  );
-  if (!row) return res.status(404).json({ error: 'Not found' });
-  row.embedding = JSON.stringify(row.embedding);
-  res.json(row);
-});
+
 
 export default router;

@@ -34,7 +34,7 @@ dotenv.config();
  *                       example: "/docs"
  *                     embeddings:
  *                       type: string
- *                       example: "/embeddings"
+ *                       example: "/embeddings (POST only)"
  *                     clients:
  *                       type: string
  *                       example: "/clients"

@@ -52,25 +52,25 @@ const swaggerDefinition = {
           }
         }
       },
-      Embedding: {
+      EmbeddingResult: {
         type: 'object',
         properties: {
-          id: {
+          index: {
             type: 'integer',
-            description: 'Embedding ID'
+            description: 'Position in the input array'
           },
           text: {
             type: 'string',
-            description: 'Original text'
+            description: 'Original input text'
           },
           embedding: {
             type: 'string',
             description: 'JSON string of the embedding vector'
           },
-          created_at: {
+          timestamp: {
             type: 'string',
             format: 'date-time',
-            description: 'Creation timestamp'
+            description: 'When this embedding was generated'
           }
         }
       }
